@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Grid Inspiration - Abstract Art</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .controls button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .controls button:hover {
+            background: #555;
+        }
+        
+        .info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="artCanvas"></canvas>
+    
+    <div class="controls">
+        <div>Gradient Grid Art</div>
+        <button onclick="regenerate()">Regenerate</button>
+        <button onclick="nextPalette()">Next Palette</button>
+        <button onclick="toggleAnimation()">Toggle Animation</button>
+        <button onclick="exportImage()">Export</button>
+        <div style="margin-top: 10px;">
+            <label>Grid Size: <input type="range" id="gridSize" min="10" max="50" value="20" onchange="updateGrid()"></label>
+        </div>
+        <div>
+            <label>Gradient Intensity: <input type="range" id="gradientIntensity" min="0.1" max="2" step="0.1" value="1" onchange="updateGradient()"></label>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #ccc;">
+            Current: <span id="paletteName">Vibrant Sunset</span>
+        </div>
+    </div>
+    
+    <div class="info">
+        Click to add technical marks<br>
+        Mouse move to interact
+    </div>
+
+    <script>
+        const canvas = document.getElementById('artCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let animationId;
+        let isAnimating = true;
+        let time = 0;
+        let technicalMarks = [];
+        let mouseX = 0, mouseY = 0;
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Color palette for gradients
+        const colorPalettes = [
+            // Dark Sunset
+            ['#8B0000', '#2F4F4F', '#1E3A8A', '#14532D', '#854D0E'],
+            
+            // Dark Pastels
+            ['#1B4332', '#2D3748', '#744210', '#7C2D12', '#991B1B'],
+            
+            // Dark Electric
+            ['#1E1B4B', '#312E81', '#581C87', '#7C2D12', '#1E40AF'],
+            
+            // Dark Pinks
+            ['#831843', '#701A75', '#7C2D12', '#92400E', '#78350F'],
+            
+            // Dark Ocean
+            ['#0F172A', '#1E293B', '#334155', '#475569', '#64748B'],
+            
+            // Dark Neon
+            ['#064E3B', '#0C4A6E', '#581C87', '#78350F', '#7C2D12'],
+            
+            // Dark Forest
+            ['#052e16', '#14532D', '#166534', '#15803D', '#16A34A'],
+            
+            // Dark Desert
+            ['#7C2D12', '#92400E', '#A16207', '#CA8A04', '#EAB308'],
+            
+            // Deep Space
+            ['#0B0B23', '#1A1A3A', '#2D1B69', '#4C1D95', '#7C3AED'],
+            
+            // Dark Candy
+            ['#831843', '#9D174D', '#BE185D', '#DB2777', '#EC4899'],
+            
+            // Dark Gold
+            ['#78350F', '#92400E', '#A16207', '#CA8A04', '#EAB308'],
+            
+            // Dark Arctic
+            ['#0C4A6E', '#075985', '#0369A1', '#0284C7', '#0EA5E9'],
+            
+            // Dark Autumn
+            ['#451A03', '#7C2D12', '#92400E', '#A16207', '#CA8A04'],
+            
+            // Dark Berry
+            ['#581C87', '#6B21A8', '#7C3AED', '#8B5CF6', '#A855F7'],
+            
+            // Dark Fire & Ice
+            ['#7C2D12', '#991B1B', '#DC2626', '#0C4A6E', '#0369A9']
+        ];
+        
+        let currentPaletteIndex = 0;
+        let currentPalette = colorPalettes[currentPaletteIndex];
+        
+        // Generate gradient colors
+        function generateGradientColors(x, y, intensity = 1) {
+            const noise1 = Math.sin(x * 0.01 + time * 0.001) * Math.cos(y * 0.01 + time * 0.002);
+            const noise2 = Math.sin(x * 0.02 + time * 0.003) * Math.cos(y * 0.02 + time * 0.001);
+            
+            const color1 = currentPalette[Math.floor(Math.abs(noise1 * 5)) % currentPalette.length];
+            const color2 = currentPalette[Math.floor(Math.abs(noise2 * 5)) % currentPalette.length];
+            
+            return { color1, color2, noise1, noise2 };
+        }
+        
+        // Create gradient
+        function createGradient(ctx, x, y, width, height, colors) {
+            const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+            gradient.addColorStop(0, colors.color1);
+            gradient.addColorStop(1, colors.color2);
+            return gradient;
+        }
+        
+        // Draw full screen gradient background
+        function drawFullScreenGradient() {
+            const gradient = ctx.createRadialGradient(
+                canvas.width * 0.3 + Math.sin(time * 0.001) * 100,
+                canvas.height * 0.3 + Math.cos(time * 0.001) * 100,
+                0,
+                canvas.width * 0.7 + Math.sin(time * 0.002) * 100,
+                canvas.height * 0.7 + Math.cos(time * 0.002) * 100,
+                Math.max(canvas.width, canvas.height) * 0.8
+            );
+            
+            const colors = generateGradientColors(canvas.width/2, canvas.height/2, 1);
+            gradient.addColorStop(0, colors.color1);
+            gradient.addColorStop(0.5, colors.color2);
+            gradient.addColorStop(1, currentPalette[Math.floor(Math.abs(Math.sin(time * 0.003)) * currentPalette.length) % currentPalette.length]);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Draw grid overlay
+        function drawGridOverlay() {
+            const gridSize = parseInt(document.getElementById('gridSize').value);
+            const cellSize = Math.min(canvas.width, canvas.height) / gridSize;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            
+            // Draw vertical lines
+            for (let x = 0; x <= canvas.width; x += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Draw horizontal lines
+            for (let y = 0; y <= canvas.height; y += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw technical marks
+        function drawTechnicalMarks() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            
+            technicalMarks.forEach(mark => {
+                ctx.beginPath();
+                ctx.moveTo(mark.x, mark.y);
+                
+                switch(mark.type) {
+                    case 'line':
+                        ctx.lineTo(mark.x + mark.length * Math.cos(mark.angle), 
+                                 mark.y + mark.length * Math.sin(mark.angle));
+                        break;
+                    case 'circle':
+                        ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2);
+                        break;
+                    case 'cross':
+                        ctx.moveTo(mark.x - mark.size, mark.y);
+                        ctx.lineTo(mark.x + mark.size, mark.y);
+                        ctx.moveTo(mark.x, mark.y - mark.size);
+                        ctx.lineTo(mark.x, mark.y + mark.size);
+                        break;
+                }
+                
+                ctx.stroke();
+            });
+        }
+        
+        // Draw interactive elements
+        function drawInteractiveElements() {
+            const gridSize = parseInt(document.getElementById('gridSize').value);
+            const cellSize = Math.min(canvas.width, canvas.height) / gridSize;
+            
+            // Mouse interaction - highlight grid cell
+            const gridX = Math.floor(mouseX / cellSize) * cellSize;
+            const gridY = Math.floor(mouseY / cellSize) * cellSize;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(gridX, gridY, cellSize, cellSize);
+            
+            // Connection lines
+            technicalMarks.forEach(mark => {
+                const distance = Math.sqrt((mouseX - mark.x) ** 2 + (mouseY - mark.y) ** 2);
+                if (distance < 100) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 * (1 - distance / 100)})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(mouseX, mouseY);
+                    ctx.lineTo(mark.x, mark.y);
+                    ctx.stroke();
+                }
+            });
+        }
+        
+        // Main render function
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw full screen gradient background
+            drawFullScreenGradient();
+            
+            // Draw grid overlay
+            drawGridOverlay();
+            
+            // Draw technical marks
+            drawTechnicalMarks();
+            
+            // Draw interactive elements
+            drawInteractiveElements();
+            
+            if (isAnimating) {
+                time += 0.5;
+                animationId = requestAnimationFrame(render);
+            }
+        }
+        
+        // Event listeners
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const markTypes = ['line', 'circle', 'cross'];
+            const type = markTypes[Math.floor(Math.random() * markTypes.length)];
+            
+            let mark = { x, y, type };
+            
+            switch(type) {
+                case 'line':
+                    mark.length = 30 + Math.random() * 50;
+                    mark.angle = Math.random() * Math.PI * 2;
+                    break;
+                case 'circle':
+                    mark.radius = 5 + Math.random() * 15;
+                    break;
+                case 'cross':
+                    mark.size = 10 + Math.random() * 20;
+                    break;
+            }
+            
+            technicalMarks.push(mark);
+            
+            // Limit number of marks
+            if (technicalMarks.length > 50) {
+                technicalMarks.shift();
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        
+        // Control functions
+        function regenerate() {
+            currentPaletteIndex = Math.floor(Math.random() * colorPalettes.length);
+            currentPalette = colorPalettes[currentPaletteIndex];
+            updatePaletteName();
+            technicalMarks = [];
+            time = 0;
+        }
+        
+        function nextPalette() {
+            currentPaletteIndex = (currentPaletteIndex + 1) % colorPalettes.length;
+            currentPalette = colorPalettes[currentPaletteIndex];
+            updatePaletteName();
+        }
+        
+        function updatePaletteName() {
+            const paletteNames = [
+                'Dark Sunset', 'Dark Pastels', 'Dark Electric', 'Dark Pinks', 'Dark Ocean',
+                'Dark Neon', 'Dark Forest', 'Dark Desert', 'Deep Space', 'Dark Candy',
+                'Dark Gold', 'Dark Arctic', 'Dark Autumn', 'Dark Berry', 'Dark Fire & Ice'
+            ];
+            document.getElementById('paletteName').textContent = paletteNames[currentPaletteIndex];
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            if (isAnimating) {
+                render();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        function updateGrid() {
+            // Grid update is handled in render function
+        }
+        
+        function updateGradient() {
+            // Gradient update is handled in render function
+        }
+        
+        function exportImage() {
+            const link = document.createElement('a');
+            link.download = 'gradient-grid-art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Initialize palette name
+        updatePaletteName();
+        
+        // Start animation
+        render();
+    </script>
+</body>
+</html>
